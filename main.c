@@ -23,16 +23,31 @@ void handle_request(int client_socket)
     printf("Request method: %s, path: %s\n", method, path);
 
      sscanf(buffer, "%s %s", method, path);
-    if (strcmp(path, "/") == 0)
+    if (strcmp(path, "/ready") == 0)
     {
         char *response =
             "HTTP/1.1 200 OK\r\n"
             "Content-Type: text/plain\r\n\r\n"
-            "Hello, World!";
+            "{\"status\": \"ok\"}";
         write(client_socket, response, strlen(response));
     }
-    else if (strcmp(path, "/health") == 0)
+    else if (strcmp(path, "/fraud-score") == 0)
     {
+        int id = 0;
+
+        sscanf(buffer, "%*s %*s %d", &id);
+
+        if (id <= 0)
+        {
+            char *response =
+                "HTTP/1.1 400 Bad Request\r\n"
+                "Content-Type: text/plain\r\n\r\n"
+                "Invalid ID";
+            write(client_socket, response, strlen(response));
+            close(client_socket);
+            return;
+        }
+        
         char *response =
             "HTTP/1.1 200 OK\r\n"
             "Content-Type: application/json\r\n\r\n"
