@@ -1,6 +1,6 @@
 ./claude/*
 ./dataset/*
-./hnsw_index.bin
-./embeddings.bin
-./payload.json
-./preprocessed_data.bin
+embeddings.bin
+payload.json
+preprocessed_data.bin
+hnsw_index.bin
