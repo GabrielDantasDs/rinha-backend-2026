@@ -1,4 +1,3 @@
-dataset/*
 embeddings.bin
 payload.json
 preprocessed_data.bin
