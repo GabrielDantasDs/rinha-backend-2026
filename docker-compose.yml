@@ -2,7 +2,7 @@ version: "3.9"
 
 services:
   app1:
-    image: gabrieldantas/rinha-2026:latest
+    image: danttera/rinha-2026:latest
     expose:
       - "8080"
     deploy:
@@ -13,7 +13,7 @@ services:
 
 
   app2:
-    image: gabrieldantas/rinha-2026:latest
+    image: danttera/rinha-2026:latest
     expose:
       - "8080"
     deploy:
