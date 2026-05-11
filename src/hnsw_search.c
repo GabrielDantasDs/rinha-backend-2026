@@ -11,7 +11,7 @@
 
 #define TOP_K       5
 #define DIM         14
-#define EF_SEARCH 16
+#define EF_SEARCH 80
 
 
 static uint32_t *g_visited       = NULL;
