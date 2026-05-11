@@ -12,8 +12,8 @@
 
 #define MAX_LEVEL 6
 #define M 12
-#define EF_SEARCH 8
-#define EF_CONSTRUCTION 8 /* quantos candidatos explorar ao inserir */
+#define EF_SEARCH 80
+#define EF_CONSTRUCTION 400 /* quantos candidatos explorar ao inserir */
 #define DIM 14
 
 typedef struct node
@@ -277,7 +277,7 @@ void init(hnsw_header_t *h, hnsw_node_t *nodes, int size)
 
 int build_hnsw(const char *data_file, const char *index_file)
 {
-    srand((unsigned)time(NULL));
+    srand(1001);
     int fd = open(data_file, O_RDONLY);
     if (fd < 0)
     {
