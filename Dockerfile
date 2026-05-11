@@ -4,11 +4,11 @@ FROM gcc:13 AS builder
 WORKDIR /app
 COPY src/ .
 COPY dataset/ ./dataset/
-COPY hnsw_index.bin ./
-COPY preprocessed_data.bin ./
+# COPY hnsw_index.bin ./
+# COPY preprocessed_data.bin ./
 
 RUN gcc -O2 -o preprocessor preprocessor.c
-RUN gcc -O2 -o hnsw hnsw.c
+RUN gcc -O2 -o hnsw hnsw.c -lm
 RUN gunzip -c ./dataset/references.json.gz > references.json 
 RUN ./preprocessor references.json preprocessed_data.bin
 RUN ./hnsw
