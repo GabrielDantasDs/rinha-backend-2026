@@ -26,4 +26,4 @@ jobs:
           context: .
           platforms: linux/amd64
           push: true
-          tags: youruser/yourimage:latest
+          tags: danttera/rinha-2026:latest
