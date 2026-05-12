@@ -10,8 +10,8 @@
 #include <stdbool.h>
 #include <time.h>
 
-#define MAX_LEVEL 6
-#define M 12
+#define MAX_LEVEL 9
+#define M 16
 #define EF_SEARCH 80
 #define EF_CONSTRUCTION 400 /* quantos candidatos explorar ao inserir */
 #define DIM 14
