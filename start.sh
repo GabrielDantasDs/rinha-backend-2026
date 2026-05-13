@@ -23,4 +23,4 @@ fi
 
 echo "Starting application..."
 
-gcc -o ./src/main ./src/main.c ./src/validation.c ./src/normalization.c ./src/hnsw_search.c -lm
+# gcc -o ./src/main ./src/main.c ./src/validation.c ./src/normalization.c ./src/hnsw_search.c -lm
