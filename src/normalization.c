@@ -398,6 +398,24 @@ static int parse_time_fields(const char *s, int *out_hour, int *out_wday)
     return -1;
 }
 
+static int extract_timestamp(const char *s, const char *key, double *out_minutes)
+{
+    char ts[64];
+    if (extract_string(s, key, ts, sizeof(ts)) != 0) {
+        return -1;
+    }
+    struct tm tm = {0};
+    char *res = strptime(ts, "%Y-%m-%dT%H:%M:%SZ", &tm);
+    if (!res) res = strptime(ts, "%Y-%m-%dT%H:%M:%S", &tm);
+    if (res) {
+        time_t t = timegm(&tm);
+
+        *out_minutes = t;
+        return 0;
+    }
+    return -1;
+}
+
 int create_vector_from_request(char *request, float *vector)
 {
     if (!request || !vector) return -1;
@@ -440,14 +458,23 @@ int create_vector_from_request(char *request, float *vector)
         vector[4] = (float)wday / 6.0f;
     }
 
+    double transaction_timestamp = 0;
+
+
+    int has_transaction_timestamp = extract_timestamp(request, "requested_at", &transaction_timestamp) == 0;
+
     /* 5,6: minutes_since_last_tx, km_from_last_tx
      * Use -1 sentinel when last_transaction is null (per DETECTION_RULES.md) */
-    double minutes_since = 0, km_from_last = 0;
-    int has_minutes = (extract_double(request, "last_transaction.minutes_since", &minutes_since) == 0);
-    int has_km      = (extract_double(request, "last_transaction.km_from_current", &km_from_last) == 0);
+    double last_transaction_timestamp = 0, km_from_last = 0;
+    int has_last_transaction_timestamp = extract_timestamp(request, "last_transaction.timestamp", &last_transaction_timestamp) == 0;
+    int has_last_transaction_km = (extract_double(request, "last_transaction.km_from_current", &km_from_last) == 0);
 
-    vector[5] = has_minutes ? (float)(minutes_since / MAX_MINUTES) : -1.0f;
-    vector[6] = has_km      ? (float)(km_from_last  / MAX_KM)      : -1.0f;
+    int minutes_since = (has_last_transaction_timestamp)
+        ? (int)(difftime(transaction_timestamp, last_transaction_timestamp) / 60.0)
+        : -1;
+
+    vector[5] = has_last_transaction_timestamp ? (float)(minutes_since / MAX_MINUTES) : -1.0f;
+    vector[6] = has_last_transaction_km ? (float)(km_from_last  / MAX_KM) : -1.0f;
 
     /* 7: km_from_home */
     vector[7] = (float)(terminal_km_from_home / MAX_KM);

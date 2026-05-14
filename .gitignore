@@ -4,3 +4,5 @@ preprocessed_data.bin
 hnsw_index.bin
 references.json
 test/*
+claude/*
+.github/*
