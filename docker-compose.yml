@@ -2,7 +2,7 @@ version: "3.9"
 
 services:
   app1:
-    build: .
+    image: danttera/rinha-2026:latest
     expose:
       - "8080"
     deploy:
@@ -13,7 +13,7 @@ services:
 
 
   app2:
-    build: .
+    image: danttera/rinha-2026:latest
     expose:
       - "8080"
     deploy:
@@ -21,6 +21,7 @@ services:
         limits:
           memory: 100mb
           cpus: "0.25"
+
 
 
   nginx:
