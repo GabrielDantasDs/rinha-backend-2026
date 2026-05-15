@@ -9,7 +9,7 @@ services:
       resources:
         limits:
           memory: 150mb
-          cpus: "1"
+          cpus: "1.0"
 
 
   app2:
@@ -20,7 +20,7 @@ services:
       resources:
         limits:
           memory: 150mb
-          cpus: "1
+          cpus: "1.0"
 
 
   nginx:
@@ -36,5 +36,5 @@ services:
       resources:
         limits:
           memory: 50mb
-          cpus: "1"
+          cpus: "1.0"
 
