@@ -5,13 +5,22 @@ services:
     image: danttera/rinha-2026:latest
     expose:
       - "8080"
+    deploy:
+      resources:
+        limits:
+          memory: 250mb
+          cpus: "0.6"
 
 
   app2:
     image: danttera/rinha-2026:latest
     expose:
       - "8080"
-
+    deploy:
+      resources:
+        limits:
+          memory: 50mb
+          cpus: "0.2"
 
 
   nginx:
@@ -23,3 +32,8 @@ services:
     depends_on:
       - app1
       - app2
+    deploy:
+      resources:
+        limits:
+          memory: 50mb
+          cpus: "0.1"
