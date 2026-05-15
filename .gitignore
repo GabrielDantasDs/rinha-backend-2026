@@ -7,3 +7,4 @@ references.json
 test/*
 claude/*
 .github/*
+.DS_Store

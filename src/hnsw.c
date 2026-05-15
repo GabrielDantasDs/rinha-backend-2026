@@ -29,7 +29,7 @@
 #include <unistd.h>
 
 #define DIM             14
-#define EF_CONSTRUCTION 400      /* candidates explored per insert */
+#define EF_CONSTRUCTION 80      /* candidates explored per insert */
 
 /* ============================================================
  * Build-time types — fat in-memory representation
