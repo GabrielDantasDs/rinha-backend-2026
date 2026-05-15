@@ -11,7 +11,7 @@
 #define MAX_LEVEL 6       /* max number of hierarchical layers       */
 #define M         16     /* max neighbors per node at layers 1..max */
 #define M0        32      /* max neighbors per node at layer 0       */
-#define EF_SEARCH 80     /* query-time beam width                   */
+#define EF_SEARCH 16     /* query-time beam width                   */
 
 /* ============================================================
  * Quantization
