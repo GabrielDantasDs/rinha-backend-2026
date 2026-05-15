@@ -8,7 +8,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 50mb
+          memory: 150mb
           cpus: "0.25"
 
 
@@ -19,7 +19,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 50mb
+          memory: 150mb
           cpus: "0.25"
 
 
@@ -36,6 +36,6 @@ services:
     deploy:
       resources:
         limits:
-          memory: 100mb
+          memory: 50mb
           cpus: "0.5"
 
