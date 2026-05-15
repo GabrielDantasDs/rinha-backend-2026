@@ -10,7 +10,7 @@
 
 #define MAX_LEVEL 6       /* max number of hierarchical layers       */
 #define M         16     /* max neighbors per node at layers 1..max */
-#define M0        32      /* max neighbors per node at layer 0       */
+#define M0        24      /* max neighbors per node at layer 0       */
 #define EF_SEARCH 16     /* query-time beam width                   */
 
 /* ============================================================
@@ -40,7 +40,7 @@
  * ============================================================ */
 
 #define INDEX_MAGIC   0x48534E56u   /* "VNsH" little-endian */
-#define INDEX_VERSION 1u
+#define INDEX_VERSION 2u            /* v2: neighbor IDs packed as uint24 */
 
 /* ============================================================
  * Compact on-disk node (28 bytes)
@@ -60,7 +60,8 @@ typedef struct {
     uint8_t  level;         /*   1 B — top level this node lives at      */
     uint8_t  l0_count;      /*   1 B — actual # neighbors at layer 0     */
     uint8_t  _pad[3];       /*   3 B — keep l0_offset 4-byte aligned     */
-    uint32_t l0_offset;     /*   4 B — index into l0_blob[] (uint32 idx) */
+    uint32_t l0_offset;     /*   4 B — entry index into l0_blob (each
+                                       entry is 3 packed bytes / uint24)  */
     uint32_t high_offset;   /*   4 B — byte offset into high_blob,
                                        UINT32_MAX iff level == 0          */
 } node_t;                   /*  28 B total                                */
@@ -79,7 +80,8 @@ typedef struct {
     uint8_t  m0;                /*  must equal the M0 macro at runtime    */
     uint8_t  _pad;
     float    qscale;            /*  quantization scale used at build      */
-    uint32_t l0_blob_count;     /*  total uint32 entries in level-0 blob  */
+    uint32_t l0_blob_count;     /*  total uint24 entries in level-0 blob
+                                    (byte size = count * 3)                */
     uint32_t high_blob_size;    /*  bytes in the high-level blob          */
 } disk_header_t;                /*  32 B total                            */
 
@@ -87,16 +89,22 @@ typedef struct {
  *
  *   [ disk_header_t                       (32 B) ]
  *   [ node_t × size                       (28 B each) ]
- *   [ l0_blob: uint32_t × l0_blob_count   (flat, indexed by node.l0_offset) ]
+ *   [ l0_blob: uint24 × l0_blob_count     (3 B each, indexed by node.l0_offset) ]
  *   [ high_blob: bytes × high_blob_size   (variable-length per-node records) ]
+ *
+ * Neighbor IDs are stored as packed 3-byte little-endian values
+ * (sufficient for up to 16M nodes; saves 25% on the on-disk blob vs.
+ * uint32). Use pack_u24() / unpack_u24() to access them.
  *
  * A node N with top level = L > 0 has a record in high_blob at byte
  * offset N.high_offset:
  *
  *   uint8_t  count[L];                 // one per level 1..L
- *   // (implicit alignment padding so the next field is 4-aligned)
- *   uint32_t neighbors[];              // flat: count[0] for layer 1,
- *                                      //       count[1] for layer 2, ...
+ *   uint8_t  neighbors[3 * total];     // packed uint24, flat:
+ *                                      //   count[0] entries for layer 1,
+ *                                      //   count[1] entries for layer 2, ...
+ *
+ * No alignment padding is needed: uint24 entries are byte-accessed.
  *
  * Nodes with level == 0 have high_offset == UINT32_MAX and consume zero
  * bytes in high_blob. Since ~94% of nodes are level-0 only (M=16), this
@@ -109,13 +117,33 @@ typedef struct {
 
 typedef struct {
     node_t   *nodes;        /* size entries, contiguous                  */
-    uint32_t *l0_blob;      /* level-0 neighbor IDs, flat                */
+    uint8_t  *l0_blob;      /* level-0 neighbor IDs, packed uint24       */
     uint8_t  *high_blob;    /* level 1+ neighbor records, variable-len   */
     uint32_t  size;
     uint32_t  entry_point;
     uint8_t   max_level;
     float     qscale;
 } hnsw_header_t;
+
+/* ============================================================
+ * uint24 pack/unpack — neighbor IDs are stored as 3 little-endian
+ * bytes throughout the on-disk format. With <= 16M nodes (uint24 max),
+ * this saves 25% on every neighbor list.
+ * ============================================================ */
+
+static inline void pack_u24(uint8_t *dst, uint32_t v)
+{
+    dst[0] = (uint8_t)(v & 0xFFu);
+    dst[1] = (uint8_t)((v >> 8) & 0xFFu);
+    dst[2] = (uint8_t)((v >> 16) & 0xFFu);
+}
+
+static inline uint32_t unpack_u24(const uint8_t *src)
+{
+    return (uint32_t)src[0]
+         | ((uint32_t)src[1] << 8)
+         | ((uint32_t)src[2] << 16);
+}
 
 /* ============================================================
  * API
