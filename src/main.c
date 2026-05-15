@@ -95,10 +95,11 @@ void load_index(const char *filename, hnsw_header_t *h)
         exit(EXIT_FAILURE);
     }
 
-    /* Cross-check declared blob sizes against the actual file length. */
+    /* Cross-check declared blob sizes against the actual file length.
+     * l0 entries are packed uint24 — 3 bytes each. */
     size_t expected = sizeof(disk_header_t)
                     + (size_t)disk->size * sizeof(node_t)
-                    + (size_t)disk->l0_blob_count * sizeof(uint32_t)
+                    + (size_t)disk->l0_blob_count * 3u
                     + (size_t)disk->high_blob_size;
     if ((size_t)st.st_size != expected)
     {
@@ -124,9 +125,9 @@ void load_index(const char *filename, hnsw_header_t *h)
 
     /* Compute the three region pointers into the mmap. */
     char *base = (char *)mapped;
-    h->nodes       = (node_t *)  (base + sizeof(disk_header_t));
-    h->l0_blob     = (uint32_t *)((char *)h->nodes + (size_t)disk->size * sizeof(node_t));
-    h->high_blob   = (uint8_t *) ((char *)h->l0_blob + (size_t)disk->l0_blob_count * sizeof(uint32_t));
+    h->nodes       = (node_t *) (base + sizeof(disk_header_t));
+    h->l0_blob     = (uint8_t *)((char *)h->nodes + (size_t)disk->size * sizeof(node_t));
+    h->high_blob   = (uint8_t *)((char *)h->l0_blob + (size_t)disk->l0_blob_count * 3u);
     h->size        = disk->size;
     h->entry_point = disk->entry_point;
     h->max_level   = disk->max_level;

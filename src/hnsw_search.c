@@ -105,25 +105,27 @@ static inline int visited_test_and_set(int i)
 /* ============================================================
  * Neighbor accessor for the compact format.
  *
- * Layer 0 is a flat slice of `h->l0_blob`. Higher layers are packed
- * into a per-node variable-length record in `h->high_blob`:
+ * Layer 0 is a flat slice of `h->l0_blob` of packed uint24 entries.
+ * Higher layers are packed into a per-node variable-length record
+ * in `h->high_blob`:
  *
  *   record layout at byte offset n->high_offset:
  *     uint8_t  count[level];           // count for levels 1..level
- *     uint8_t  pad[(4-level)&3];       // align next field to 4 bytes
- *     uint32_t neighbors[];            // flat: count[0] entries for layer 1,
- *                                      //        count[1] entries for layer 2, ...
+ *     uint8_t  neighbors[3 * total];   // packed uint24, flat:
+ *                                      //   count[0] entries for layer 1,
+ *                                      //   count[1] entries for layer 2, ...
  *
- * Returns (NULL, 0) if `layer` is invalid for this node.
+ * Returns a byte pointer to the first uint24 entry; use unpack_u24 to
+ * decode each. Returns (NULL, 0) if `layer` is invalid for this node.
  * ============================================================ */
 
 static inline void get_neighbors(const hnsw_header_t *h,
                                  const node_t *n, int layer,
-                                 const uint32_t **out_arr, int *out_count)
+                                 const uint8_t **out_arr, int *out_count)
 {
     if (layer == 0)
     {
-        *out_arr = h->l0_blob + n->l0_offset;
+        *out_arr = h->l0_blob + (size_t)n->l0_offset * 3u;
         *out_count = (int)n->l0_count;
         return;
     }
@@ -138,11 +140,9 @@ static inline void get_neighbors(const hnsw_header_t *h,
     const uint8_t *rec = h->high_blob + n->high_offset;
     int L = (int)n->level;
     int counts_bytes = L;
-    int pad_to_4 = (4 - (counts_bytes & 3)) & 3;
 
-    /* skip past the counts + padding to reach the flat neighbor array */
-    const uint32_t *neighbors_base =
-        (const uint32_t *)(rec + counts_bytes + pad_to_4);
+    /* skip past the counts to reach the packed uint24 neighbor array */
+    const uint8_t *neighbors_base = rec + counts_bytes;
 
     /* index within the flat array: sum of counts for layers 1..layer-1 */
     int idx = 0;
@@ -151,7 +151,7 @@ static inline void get_neighbors(const hnsw_header_t *h,
         idx += (int)rec[l - 1];
     }
 
-    *out_arr = neighbors_base + idx;
+    *out_arr = neighbors_base + (size_t)idx * 3u;
     *out_count = (int)rec[layer - 1];
 }
 
@@ -203,13 +203,13 @@ static int search_layer(hnsw_header_t *h, const uint8_t *q,
             break;
 
         const node_t *node = &h->nodes[c_idx];
-        const uint32_t *nb_arr;
+        const uint8_t *nb_arr;
         int nb_count;
         get_neighbors(h, node, layer, &nb_arr, &nb_count);
 
         for (int j = 0; j < nb_count; j++)
         {
-            int nb = (int)nb_arr[j];
+            int nb = (int)unpack_u24(nb_arr + (size_t)j * 3u);
             if (nb < 0 || nb >= (int)h->size)
                 continue;
             if (visited_test_and_set(nb))
@@ -289,7 +289,7 @@ static int greedy_search_layer(hnsw_header_t *h, const uint8_t *q,
     {
         changed = 0;
         const node_t *n = &h->nodes[current];
-        const uint32_t *nb_arr;
+        const uint8_t *nb_arr;
         int nb_count;
         get_neighbors(h, n, level, &nb_arr, &nb_count);
 
@@ -298,7 +298,7 @@ static int greedy_search_layer(hnsw_header_t *h, const uint8_t *q,
         //         current, d_cur, nb_count);
         for (int i = 0; i < nb_count; i++)
         {
-            int nb = (int)nb_arr[i];
+            int nb = (int)unpack_u24(nb_arr + (size_t)i * 3u);
             if (nb < 0 || nb >= (int)h->size)
                 continue;
             uint32_t d_nb = dist2(q, h->nodes[nb].qvec);

@@ -9,8 +9,8 @@
  * resulting graph is optimized for the exact distance ordering the
  * server will see.
  *
- * Build-time peak RAM: ~2 GB (608 B per build_node_t × 3M).
- * Output file size:    ~400 MB.
+ * Build-time peak RAM: ~1.9 GB (build_node_t × 3M).
+ * Output file size:    ~310 MB (M0=24, uint24-packed neighbor IDs).
  * ============================================================ */
 
 #include "hnsw_search.h"      /* macros: M, M0, MAX_LEVEL — disk types */
@@ -352,20 +352,19 @@ static void insert(build_header_t *h, int idx)
  * ============================================================ */
 
 /* Bytes used by the high_blob record for one node at top level L.
- *   counts[L] uint8_t, then padding to 4-byte alignment, then 4*sum(counts) bytes.
- * Total is always a multiple of 4, keeping subsequent records aligned. */
+ *   counts[L] uint8_t, then 3*sum(counts) bytes of packed uint24 neighbors.
+ * No alignment padding — uint24 entries are byte-accessed. */
 static uint32_t high_record_bytes(const build_node_t *n)
 {
     int L = (int)n->level;
     if (L == 0) return 0;
 
     uint32_t counts_bytes = (uint32_t)L;
-    uint32_t pad_to_4     = (4 - (counts_bytes & 3)) & 3;
     uint32_t nb_total     = 0;
     for (int l = 1; l <= L; l++) {
         nb_total += (uint32_t)n->neighbor_count[l];
     }
-    return counts_bytes + pad_to_4 + nb_total * (uint32_t)sizeof(uint32_t);
+    return counts_bytes + nb_total * 3u;
 }
 
 static int serialize_compact(const build_header_t *h, const char *path)
@@ -397,8 +396,9 @@ static int serialize_compact(const build_header_t *h, const char *path)
     }
 
     /* ── Pass 2: materialize blobs ── */
-    uint32_t *l0_blob = malloc((size_t)l0_total * sizeof(uint32_t));
-    uint8_t  *high_blob = (high_total > 0) ? malloc(high_total) : NULL;
+    size_t   l0_bytes = (size_t)l0_total * 3u;   /* uint24-packed */
+    uint8_t *l0_blob  = (l0_total > 0)  ? malloc(l0_bytes) : NULL;
+    uint8_t *high_blob = (high_total > 0) ? malloc(high_total) : NULL;
     if ((!l0_blob && l0_total > 0) || (!high_blob && high_total > 0)) {
         fprintf(stderr, "serialize: out of memory for blobs\n");
         free(l0_offsets); free(high_offsets);
@@ -407,15 +407,17 @@ static int serialize_compact(const build_header_t *h, const char *path)
     }
 
     {
-        uint32_t l0_cursor   = 0;
+        uint32_t l0_cursor   = 0;   /* entry index into uint24-packed array */
         uint32_t high_cursor = 0;
         for (int i = 0; i < N; i++) {
             const build_node_t *n = &h->nodes[i];
 
-            /* level-0 neighbors → l0_blob */
+            /* level-0 neighbors → l0_blob (packed uint24) */
             int l0c = n->neighbor_count[0];
             for (int j = 0; j < l0c; j++) {
-                l0_blob[l0_cursor++] = (uint32_t)n->neighbors_l0[j];
+                pack_u24(l0_blob + (size_t)l0_cursor * 3u,
+                         (uint32_t)n->neighbors_l0[j]);
+                l0_cursor++;
             }
 
             /* level 1+ neighbors → high_blob (variable-length record) */
@@ -427,20 +429,14 @@ static int serialize_compact(const build_header_t *h, const char *path)
             for (int l = 1; l <= L; l++) {
                 rec[l - 1] = n->neighbor_count[l];
             }
-            /* zero the alignment padding */
-            uint32_t counts_bytes = (uint32_t)L;
-            uint32_t pad_to_4     = (4 - (counts_bytes & 3)) & 3;
-            for (uint32_t p = 0; p < pad_to_4; p++) {
-                rec[counts_bytes + p] = 0;
-            }
-            /* neighbors[] uint32_t, flat */
-            uint32_t off_into_rec = counts_bytes + pad_to_4;
+            /* neighbors[] packed uint24, immediately after counts */
+            uint32_t off_into_rec = (uint32_t)L;
             for (int l = 1; l <= L; l++) {
                 int nbc = n->neighbor_count[l];
                 for (int j = 0; j < nbc; j++) {
                     uint32_t nbid = (uint32_t)n->neighbors_upper[l - 1][j];
-                    memcpy(rec + off_into_rec, &nbid, sizeof(uint32_t));
-                    off_into_rec += sizeof(uint32_t);
+                    pack_u24(rec + off_into_rec, nbid);
+                    off_into_rec += 3u;
                 }
             }
 
@@ -486,9 +482,10 @@ static int serialize_compact(const build_header_t *h, const char *path)
         if (fwrite(&out, sizeof(out), 1, f) != 1) goto wrerr;
     }
 
-    /* l0 blob */
+    /* l0 blob (packed uint24, byte stream) */
     if (l0_total > 0) {
-        if (fwrite(l0_blob, sizeof(uint32_t), l0_total, f) != l0_total) goto wrerr;
+        size_t bytes = (size_t)l0_total * 3u;
+        if (fwrite(l0_blob, 1, bytes, f) != bytes) goto wrerr;
     }
 
     /* high blob */
