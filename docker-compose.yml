@@ -9,7 +9,7 @@ services:
       resources:
         limits:
           memory: 150mb
-          cpus: "0.25"
+          cpus: "0.4"
 
 
   app2:
@@ -20,7 +20,7 @@ services:
       resources:
         limits:
           memory: 150mb
-          cpus: "0.25"
+          cpus: "0.4"
 
 
 
@@ -37,5 +37,5 @@ services:
       resources:
         limits:
           memory: 50mb
-          cpus: "0.5"
+          cpus: "0.2"
 
