@@ -9,8 +9,8 @@
  * ============================================================ */
 
 #define MAX_LEVEL 6       /* max number of hierarchical layers       */
-#define M         16     /* max neighbors per node at layers 1..max */
-#define M0        24      /* max neighbors per node at layer 0       */
+#define M         8     /* max neighbors per node at layers 1..max */
+#define M0        16      /* max neighbors per node at layer 0       */
 #define EF_SEARCH 16     /* query-time beam width                   */
 
 /* ============================================================
