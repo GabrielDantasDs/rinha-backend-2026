@@ -16,7 +16,7 @@
 #include <time.h>
 #include <pthread.h>
 
-#define PORT 8080
+#define PORT 9999
 #define BUFFER_SIZE 4096
 
 static hnsw_header_t g_hnsw;
@@ -446,7 +446,6 @@ static int handle_one_request(struct connection *c,
 
     /* === TIMING INSTRUMENTATION (temporary) === */
     struct timespec t0, t1, t2, t3;
-    clock_gettime(CLOCK_MONOTONIC, &t0);
 
     if (!validate_request(body_str))
     {
@@ -456,8 +455,6 @@ static int handle_one_request(struct connection *c,
         return 1;
     }
 
-    clock_gettime(CLOCK_MONOTONIC, &t1);
-
     float vector[14];
     create_vector_from_request(body_str, vector);
     c->buffer[header_len + body_len] = saved;
@@ -466,8 +463,6 @@ static int handle_one_request(struct connection *c,
     // {
     //     fprintf(stderr, "vector[%d] = %f\n", i, vector[i]);
     // }
-
-    clock_gettime(CLOCK_MONOTONIC, &t2);
 
     /* KNN search for the 5 nearest reference vectors. */
     int   idx_out[5];
@@ -487,7 +482,6 @@ static int handle_one_request(struct connection *c,
     //             (idx_out[i] >= 0) ? g_hnsw.nodes[idx_out[i]].qvec[11] : -1);
     // }
 
-    clock_gettime(CLOCK_MONOTONIC, &t3);
 
     long us_validate = (t1.tv_sec - t0.tv_sec) * 1000000L
                      + (t1.tv_nsec - t0.tv_nsec) / 1000;
