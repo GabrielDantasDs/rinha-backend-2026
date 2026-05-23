@@ -4,7 +4,7 @@ services:
   app1:
     image: danttera/rinha-2026:latest
     expose:
-      - "8080"
+      - "9999"
     deploy:
       resources:
         limits:
@@ -15,7 +15,7 @@ services:
   app2:
     image: danttera/rinha-2026:latest
     expose:
-      - "8080"
+      - "9999"
     deploy:
       resources:
         limits:
