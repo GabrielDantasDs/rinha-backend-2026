@@ -12,7 +12,7 @@ RUN gcc -O2 -o hnsw hnsw.c -lm
 RUN gunzip -c ./dataset/references.json.gz > references.json 
 RUN ./preprocessor references.json preprocessed_data.bin
 RUN ./hnsw
-RUN gcc -O3 -march=x86-64-v3 -funroll-loops -flto -static -o app main.c validation.c normalization.c hnsw_search.c -lm
+RUN gcc -O3 -funroll-loops -static -o app main.c validation.c normalization.c hnsw_search.c -lm
 
 # Runtime mínimo
 FROM alpine:3.20
