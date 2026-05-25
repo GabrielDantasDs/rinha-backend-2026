@@ -207,8 +207,31 @@ static int search_layer(hnsw_header_t *h, const uint8_t *q,
         int nb_count;
         get_neighbors(h, node, layer, &nb_arr, &nb_count);
 
+        /* Prefetch the first 2 neighbor nodes so the random-access reads
+         * in dist2 hit L1 instead of stalling on L3/memory. The neighbor
+         * IDs themselves are packed uint24 in nb_arr (contiguous, already
+         * prefetched implicitly), but h->nodes[nb] is a random pointer. */
+        if (nb_count > 0)
+        {
+            uint32_t nb0 = unpack_u24(nb_arr);
+            if (nb0 < h->size) __builtin_prefetch(&h->nodes[nb0].qvec);
+        }
+        if (nb_count > 1)
+        {
+            uint32_t nb1 = unpack_u24(nb_arr + 3u);
+            if (nb1 < h->size) __builtin_prefetch(&h->nodes[nb1].qvec);
+        }
+
         for (int j = 0; j < nb_count; j++)
         {
+            /* prefetch j+2 while we work on j */
+            if (j + 2 < nb_count)
+            {
+                uint32_t nb_ahead = unpack_u24(nb_arr + (size_t)(j + 2) * 3u);
+                if (nb_ahead < h->size)
+                    __builtin_prefetch(&h->nodes[nb_ahead].qvec);
+            }
+
             int nb = (int)unpack_u24(nb_arr + (size_t)j * 3u);
             if (nb < 0 || nb >= (int)h->size)
                 continue;
@@ -294,10 +317,31 @@ static int greedy_search_layer(hnsw_header_t *h, const uint8_t *q,
         get_neighbors(h, n, level, &nb_arr, &nb_count);
 
         uint32_t d_cur = dist2(q, n->qvec);
-        // fprintf(stderr, "greedy_search_layer: current=%d d_cur=%u nb_count=%d\n",
-        //         current, d_cur, nb_count);
+
+        /* Same prefetch trick as search_layer — the neighbor list is the
+         * hot path here too, and at upper levels there are typically only
+         * a handful of neighbors so prefetching the first two upfront
+         * covers most of the loop. */
+        if (nb_count > 0)
+        {
+            uint32_t nb0 = unpack_u24(nb_arr);
+            if (nb0 < h->size) __builtin_prefetch(&h->nodes[nb0].qvec);
+        }
+        if (nb_count > 1)
+        {
+            uint32_t nb1 = unpack_u24(nb_arr + 3u);
+            if (nb1 < h->size) __builtin_prefetch(&h->nodes[nb1].qvec);
+        }
+
         for (int i = 0; i < nb_count; i++)
         {
+            if (i + 2 < nb_count)
+            {
+                uint32_t nb_ahead = unpack_u24(nb_arr + (size_t)(i + 2) * 3u);
+                if (nb_ahead < h->size)
+                    __builtin_prefetch(&h->nodes[nb_ahead].qvec);
+            }
+
             int nb = (int)unpack_u24(nb_arr + (size_t)i * 3u);
             if (nb < 0 || nb >= (int)h->size)
                 continue;

@@ -6,6 +6,7 @@
 #include <signal.h>
 #include <unistd.h>
 #include <arpa/inet.h>
+#include <netinet/tcp.h>
 #include <sys/mman.h>
 #include <fcntl.h>
 #include <sys/epoll.h>
@@ -109,9 +110,11 @@ void load_index(const char *filename, hnsw_header_t *h)
         exit(EXIT_FAILURE);
     }
 
-    /* Pre-warm hints to the kernel. */
+    /* Pre-warm hints to the kernel. MAP_POPULATE already faulted every
+     * page in; WILLNEED reinforces "keep these resident". We deliberately
+     * do NOT set MADV_RANDOM: HNSW's neighbor walk has enough locality
+     * that read-ahead helps when the working set spills L3. */
     if (madvise(mapped, st.st_size, MADV_WILLNEED) != 0) perror("madvise WILLNEED");
-    if (madvise(mapped, st.st_size, MADV_RANDOM)   != 0) perror("madvise RANDOM");
 
     /* Belt-and-suspenders: force every page resident. ~300 ms one-time. */
     {
@@ -601,6 +604,11 @@ static int accept_loop(int server_socket, int epoll_fd)
         int fd = accept4(server_socket, NULL, NULL, SOCK_NONBLOCK);
         if (fd >= 0)
         {
+            /* Disable Nagle: every response is a single full HTTP message,
+             * so coalescing only adds latency on keep-alive connections. */
+            int one = 1;
+            setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &one, sizeof(one));
+
             struct connection *c = new_connection(fd);
             if (c == NULL)
             {
