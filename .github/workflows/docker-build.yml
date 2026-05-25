@@ -24,11 +24,11 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-        images: danttera/rinha-2026
-        tags: |
-          type=raw,value=latest
-          type=sha,format=short
-          type=ref,event=branch
+          images: danttera/rinha-2026
+          tags: |
+            type=raw,value=latest
+            type=sha,format=short
+            type=ref,event=branch
 
       - name: Build and Push
         uses: docker/build-push-action@v5
