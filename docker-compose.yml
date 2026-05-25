@@ -3,24 +3,32 @@ version: "3.9"
 services:
   app1:
     image: danttera/rinha-2026:latest
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
     expose:
       - "9999"
     deploy:
       resources:
         limits:
           memory: 100mb
-          cpus: "0.4"
+          cpus: "0.35"
 
 
   app2:
     image: danttera/rinha-2026:latest
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
     expose:
       - "9999"
     deploy:
       resources:
         limits:
           memory: 100mb
-          cpus: "0.4"
+          cpus: "0.35"
 
 
   nginx:
@@ -35,5 +43,5 @@ services:
     deploy:
       resources:
         limits:
-          memory: 100mb
-          cpus: "0.2"
+          memory: 50mb
+          cpus: "0.3"
