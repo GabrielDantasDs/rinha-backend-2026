@@ -9,8 +9,8 @@
  * resulting graph is optimized for the exact distance ordering the
  * server will see.
  *
- * Build-time peak RAM: ~1.9 GB (build_node_t × 3M).
- * Output file size:    ~310 MB (M0=24, uint24-packed neighbor IDs).
+ * Build-time peak RAM: ~1.2 GB (build_node_t × 3M).
+ * Output file size:    ~225 MB (M0=16, uint24-packed neighbor IDs).
  * ============================================================ */
 
 #include "hnsw_search.h"      /* macros: M, M0, MAX_LEVEL — disk types */
