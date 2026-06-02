@@ -10,7 +10,7 @@
 
 #define MAX_LEVEL 6       /* max number of hierarchical layers       */
 #define M         16     /* max neighbors per node at layers 1..max */
-#define M0        32      /* max neighbors per node at layer 0       */
+#define M0        16     /* layer-0 max neighbors (was 32; halved for ~350MB budget) */
 #define EF_SEARCH 80     /* query-time beam width                   */
 
 /* ============================================================
